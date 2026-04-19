@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Fake Review Detector</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@700;800&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --surface2: #1f1f1f;
+      --border: #2a2a2a;
+      --text: #f0ede8;
+      --muted: #666;
+      --accent: #f5a623;
+      --accent2: #ff6b35;
+      --green: #4ade80;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --blue: #60a5fa;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 360px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      min-height: 200px;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 16px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo {
+      width: 28px; height: 28px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+    .header-text h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 13px; font-weight: 800;
+      letter-spacing: 0.02em; text-transform: uppercase;
+    }
+    .header-text p {
+      font-size: 10px; color: var(--muted);
+      font-family: 'DM Mono', monospace; margin-top: 1px;
+    }
+
+    /* ── Body ── */
+    .body { padding: 14px 16px; }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex; align-items: center; gap: 7px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 11px; margin-bottom: 12px;
+      font-family: 'DM Mono', monospace; font-size: 11px;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .dot.ok    { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot.err   { background: var(--red);   box-shadow: 0 0 6px var(--red);   }
+    .dot.pulse { background: var(--accent); animation: pulse 0.9s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+    /* ── Analyze button ── */
+    .btn-analyze {
+      width: 100%; padding: 11px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #000; font-family: 'Syne', sans-serif;
+      font-size: 12px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      border: none; border-radius: 8px; cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-bottom: 12px;
+    }
+    .btn-analyze:hover { opacity: 0.88; }
+    .btn-analyze:active { transform: scale(0.98); }
+    .btn-analyze:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+    /* ── Stats grid ── */
+    .stats {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px; margin-bottom: 12px;
+      display: none;
+    }
+    .stats.show { display: grid; }
+    .stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 8px; text-align: center;
+    }
+    .stat-num {
+      font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 800;
+      line-height: 1; margin-bottom: 4px;
+    }
+    .stat-num.total  { color: var(--accent); }
+    .stat-num.fake   { color: var(--red); }
+    .stat-num.real   { color: var(--green); }
+    .stat-label {
+      font-size: 9px; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ── Verdict banner ── */
+    .verdict {
+      border-radius: 8px; padding: 10px 12px;
+      margin-bottom: 12px; display: none;
+      font-family: 'DM Mono', monospace; font-size: 11px;
+      border: 1px solid;
+    }
+    .verdict.show { display: block; }
+    .verdict.safe    { background: rgba(74,222,128,0.08); border-color: var(--green); color: var(--green); }
+    .verdict.warning { background: rgba(251,191,36,0.08); border-color: var(--yellow); color: var(--yellow); }
+    .verdict.danger  { background: rgba(248,113,113,0.08); border-color: var(--red);  color: var(--red);   }
+    .verdict-icon { font-size: 16px; margin-right: 6px; }
+    .verdict-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 12px; }
+    .verdict-sub { font-size: 10px; margin-top: 3px; opacity: 0.85; }
+
+    /* ── Fake % bar ── */
+    .bar-section {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      margin-bottom: 12px; display: none;
+    }
+    .bar-section.show { display: block; }
+    .bar-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 7px;
+    }
+    .bar-label {
+      font-family: 'DM Mono', monospace; font-size: 9px;
+      text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+    }
+    .bar-pct {
+      font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 800;
+    }
+    .bar-track {
+      background: var(--surface2); border-radius: 4px; height: 6px; overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%; border-radius: 4px;
+      transition: width 0.7s cubic-bezier(0.4,0,0.2,1);
+      width: 0%;
+    }
+    .bar-fill.safe    { background: var(--green); }
+    .bar-fill.warning { background: var(--yellow); }
+    .bar-fill.danger  { background: linear-gradient(90deg, var(--yellow), var(--red)); }
+
+    /* ── Review breakdown list ── */
+    .breakdown {
+      display: none; margin-top: 4px;
+    }
+    .breakdown.show { display: block; }
+    .breakdown-header {
+      font-family: 'DM Mono', monospace; font-size: 9px;
+      text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--muted); margin-bottom: 6px; padding-left: 2px;
+    }
+    .breakdown-list {
+      max-height: 180px; overflow-y: auto;
+      scrollbar-width: thin; scrollbar-color: var(--border) transparent;
+    }
+    .review-row {
+      display: flex; align-items: flex-start; gap: 8px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 7px; padding: 8px 10px; margin-bottom: 5px;
+    }
+    .review-row:last-child { margin-bottom: 0; }
+    .tag {
+      font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 500;
+      padding: 2px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 1px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .tag.fake { background: rgba(248,113,113,0.15); color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+    .tag.real { background: rgba(74,222,128,0.12); color: var(--green); border: 1px solid rgba(74,222,128,0.25); }
+    .review-text {
+      font-size: 10px; color: var(--muted); line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* ── Not Amazon msg ── */
+    .not-amazon {
+      padding: 20px 0; text-align: center; color: var(--muted);
+    }
+    .not-amazon .emoji { font-size: 28px; margin-bottom: 8px; }
+    .not-amazon p { font-size: 12px; line-height: 1.6; }
+    .not-amazon strong { color: var(--text); }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🔍</div>
+  <div class="header-text">
+    <h1>Fake Review Detector</h1>
+    <p>AI-powered · logistic regression model</p>
+  </div>
+</div>
+
+<div class="body">
+
+  <div class="status-bar">
+    <div class="dot" id="statusDot"></div>
+    <span id="statusText">Checking page...</span>
+  </div>
+
+  <div id="mainContent"></div>
+
+</div>
+
+<script src="popup.js"></script>
+</body>
+</html>
